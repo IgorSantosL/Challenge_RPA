@@ -28,7 +28,7 @@ class NewsScraper:
         self.logger.info(f"Opened site: {self.config.site_url}")
 
     def search_news(self):
-        # Ajuste os seletores conforme necessário para o site específico
+        # Clicking on search button
         search_box = WebDriverWait(self.driver, 10).until(
             EC.element_to_be_clickable((By.XPATH, '/html/body/ps-header/header/div[2]/button'))  # Ajuste o XPath
         )
@@ -41,6 +41,7 @@ class NewsScraper:
         self.logger.info(f"Searched for phrase: {self.config.search_phrase}")
 
     def scrape_news(self):
+        #collecting news with correct datetime
         news_data = []
         current_date = datetime.now()
         for i in range(self.config.months):
@@ -55,11 +56,11 @@ class NewsScraper:
                 
                 date_str = article.find_element(By.CLASS_NAME, "promo-timestamp").text
                 try:
-                    # Converter a string de data para um objeto datetime
+                    
                     article_date = datetime.strptime(date_str, "%B %d, %Y")  # Formato "July 8, 2024"
                     article_date_month = article_date.month
                 except ValueError:
-                    # Se o formato não for reconhecido, pode ser tratado aqui
+                    
                     self.logger.error(f"Date format error: {date_str}")
                     continue
                 
@@ -77,12 +78,11 @@ class NewsScraper:
         self.save_to_excel(news_data)
 
     def download_image(self, url, title):
-        # Remove caracteres inválidos para nomes de arquivos
+        # Removing invalid characters
         safe_title = re.sub(r'[<>:"/\\|?*]', '', title)  # Remove caracteres inválidos
-        # Define o nome do arquivo como o título da notícia com a extensão da imagem
         local_filename = os.path.join(self.config.output_dir, f"{safe_title}.jpg")
         
-        # Baixa a imagem
+        # Downloading image
         with requests.get(url, stream=True) as r:
             r.raise_for_status()
             with open(local_filename, 'wb') as f:
@@ -92,13 +92,16 @@ class NewsScraper:
         return local_filename
 
     def count_search_phrase(self, title, description):
+        # Counting search phrase
         return title.lower().count(self.config.search_phrase.lower()) + description.lower().count(self.config.search_phrase.lower())
 
     def contains_money(self, title, description):
+        # Counting money in article
         money_pattern = r'\$\d+(\.\d{1,2})?|\d+(\,\d{3})*(\.\d{1,2})?|(\d+|\d{1,3})\s*(dollars|USD|usd)'
         return bool(re.search(money_pattern, title, re.IGNORECASE)) or bool(re.search(money_pattern, description, re.IGNORECASE))
 
     def save_to_excel(self, data):
+        # Saving to excel
         df = pd.DataFrame(data, columns=["Title", "Date", "Description", "Image Filename", "Phrase Count", "Contains Money"])
         output_file = os.path.join(self.config.output_dir, 'news_data.xlsx')
         df.to_excel(output_file, index=False)
